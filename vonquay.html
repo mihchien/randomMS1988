@@ -12,7 +12,8 @@
   ║                    .getActiveSheet();                         ║
   ║      if (sheet.getLastRow() === 0) {                         ║
   ║        sheet.appendRow(['Thời gian','Tên bé',                ║
-  ║          'Tên phụ huynh','Số điện thoại','Phần thưởng']);    ║
+  ║          'Tên phụ huynh','Số điện thoại','Địa chỉ',          ║
+  ║          'Độ tuổi','Phần thưởng']);                          ║
   ║      }                                                        ║
   ║      sheet.appendRow([                                        ║
   ║        new Date().toLocaleString('vi-VN',                    ║
@@ -20,6 +21,8 @@
   ║        e.parameter.tenBe  || '',                             ║
   ║        e.parameter.tenPH  || '',                             ║
   ║        e.parameter.sdt    || '',                             ║
+  ║        e.parameter.diaChi || '',                             ║
+  ║        e.parameter.tuoi   || '',                             ║
   ║        e.parameter.prize  || ''                              ║
   ║      ]);                                                      ║
   ║      return ContentService                                    ║
@@ -203,6 +206,16 @@ canvas#wc { display:block; border-radius:50%; box-shadow:0 25px 70px rgba(0,0,0,
       <input type="tel" id="fSdt" placeholder="0xxxxxxxxx" maxlength="11" autocomplete="off">
       <span class="ferr" id="eSdt"></span>
     </div>
+    <div class="fgroup">
+      <label>📍 Địa chỉ</label>
+      <input type="text" id="fDiaChi" placeholder="Nhập địa chỉ..." autocomplete="off">
+      <span class="ferr" id="eDiaChi"></span>
+    </div>
+    <div class="fgroup">
+      <label>🎂 Độ tuổi</label>
+      <input type="number" id="fTuoi" placeholder="Nhập độ tuổi..." min="0" max="120" autocomplete="off">
+      <span class="ferr" id="eTuoi"></span>
+    </div>
 
     <button class="fsubmit-btn" onclick="submitForm()">🎡 Bắt đầu quay!</button>
   </div>
@@ -247,7 +260,7 @@ canvas#wc { display:block; border-radius:50%; box-shadow:0 25px 70px rgba(0,0,0,
 /* ══════════════════════════════════════════════
    ⚙️  CẤU HÌNH — paste URL Apps Script vào đây
 ══════════════════════════════════════════════ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVQUW4dEWh_o2bfJq9WxiBZpXHpudc8LLFqGX4XNriOzsLg5AZwubOVvh4VHfdlGilSg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhSwVLFZeZnmEaHfdDNRMJA4F_ZzHhLDklsRToa1UkaxFfX4erYjHKgSmunR5Y8sKUGA/exec';
 
 /* ══════════════════════════════════════════════
    FORM
@@ -255,16 +268,18 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVQUW4dEWh_o2bfJq9W
 let playerData = null;
 
 function submitForm() {
-  const tenBe = document.getElementById('fTenBe').value.trim();
-  const tenPH = document.getElementById('fTenPH').value.trim();
-  const sdt   = document.getElementById('fSdt').value.trim();
+  const tenBe  = document.getElementById('fTenBe').value.trim();
+  const tenPH  = document.getElementById('fTenPH').value.trim();
+  const sdt    = document.getElementById('fSdt').value.trim();
+  const diaChi = document.getElementById('fDiaChi').value.trim();
+  const tuoi   = document.getElementById('fTuoi').value.trim();
   let ok = true;
 
   // Clear errors
-  ['fTenBe','fTenPH','fSdt'].forEach(id => {
+  ['fTenBe','fTenPH','fSdt','fDiaChi','fTuoi'].forEach(id => {
     document.getElementById(id).classList.remove('err');
   });
-  ['eTenBe','eTenPH','eSdt'].forEach(id => {
+  ['eTenBe','eTenPH','eSdt','eDiaChi','eTuoi'].forEach(id => {
     document.getElementById(id).textContent = '';
   });
 
@@ -283,9 +298,19 @@ function submitForm() {
     document.getElementById('eSdt').textContent = 'Số điện thoại không hợp lệ (bắt đầu bằng 0, 10–11 số)';
     ok = false;
   }
+  if (diaChi.length < 2) {
+    document.getElementById('fDiaChi').classList.add('err');
+    document.getElementById('eDiaChi').textContent = 'Vui lòng nhập địa chỉ (ít nhất 2 ký tự)';
+    ok = false;
+  }
+  if (!/^\d{1,3}$/.test(tuoi) || +tuoi < 1 || +tuoi > 120) {
+    document.getElementById('fTuoi').classList.add('err');
+    document.getElementById('eTuoi').textContent = 'Vui lòng nhập độ tuổi hợp lệ (1–120)';
+    ok = false;
+  }
   if (!ok) return;
 
-  playerData = { tenBe, tenPH, sdt };
+  playerData = { tenBe, tenPH, sdt, diaChi, tuoi };
 
   // Animate form out
   const fs = document.getElementById('formScreen');
@@ -312,10 +337,12 @@ document.addEventListener('keydown', e => {
 function sendToSheet(prize) {
   if (!playerData || !SCRIPT_URL || SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') return;
   const body = new URLSearchParams({
-    tenBe : playerData.tenBe,
-    tenPH : playerData.tenPH,
-    sdt   : playerData.sdt,
-    prize : prize
+    tenBe  : playerData.tenBe,
+    tenPH  : playerData.tenPH,
+    sdt    : playerData.sdt,
+    diaChi : playerData.diaChi,
+    tuoi   : playerData.tuoi,
+    prize  : prize
   });
   fetch(SCRIPT_URL, {
     method : 'POST',
@@ -563,11 +590,13 @@ function closeResult(){
 
   // Reset về form ban đầu
   playerData = null;
-  document.getElementById('fTenBe').value = '';
-  document.getElementById('fTenPH').value = '';
-  document.getElementById('fSdt').value   = '';
-  ['fTenBe','fTenPH','fSdt'].forEach(id => document.getElementById(id).classList.remove('err'));
-  ['eTenBe','eTenPH','eSdt'].forEach(id => document.getElementById(id).textContent = '');
+  document.getElementById('fTenBe').value  = '';
+  document.getElementById('fTenPH').value  = '';
+  document.getElementById('fSdt').value    = '';
+  document.getElementById('fDiaChi').value = '';
+  document.getElementById('fTuoi').value   = '';
+  ['fTenBe','fTenPH','fSdt','fDiaChi','fTuoi'].forEach(id => document.getElementById(id).classList.remove('err'));
+  ['eTenBe','eTenPH','eSdt','eDiaChi','eTuoi'].forEach(id => document.getElementById(id).textContent = '');
 
   // Disable spin button
   document.getElementById('btn').disabled = true;
